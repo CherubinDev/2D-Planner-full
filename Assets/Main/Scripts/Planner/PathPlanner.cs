@@ -56,9 +56,9 @@ public class PathPlanner : MonoBehaviour
         spriteCompensation = worldGrid.cellSize / 2.0f;
 
         grids = worldGrid.GetComponentsInChildren<UnityEngine.Tilemaps.Tilemap>();
-        groundGrid = grids[1];
-        obstacleGrid = grids[2];
-
+        groundGrid = grids[0];
+        // TODO: Iterate through grids and find any that are tagged as obstacles
+        obstacleGrid = grids[1];
 
         initializePlanningSpace();
         initializePlanners();
@@ -128,7 +128,7 @@ public class PathPlanner : MonoBehaviour
                 Node newNode = new Node(gridLocation);
                 newNode.setParentNode(null);
                 newNode.setCost(float.MaxValue);
-                newNode.setObstacle(obstacleGrid.HasTile(gridLocation));
+                newNode.setObstacle(obstacleGrid.CompareTag("Obstacle") && obstacleGrid.HasTile(gridLocation));
                 nodes[x, y] = newNode;
             }
         }

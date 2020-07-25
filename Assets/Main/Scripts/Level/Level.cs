@@ -33,4 +33,9 @@ public class CellInfo
 	public int x_location;
 	public int y_location;
 	public bool? walkable;
+
+	public Vector3Int GetVector3Int()
+	{
+		return new Vector3Int(x_location, y_location, 1);
+	}
 }

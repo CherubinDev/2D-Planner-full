@@ -3884,6 +3884,18 @@ PrefabInstance:
   m_Modification:
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 2444126424307600224, guid: 8f5317eaeab00144c991a8db55d4c864,
+        type: 3}
+      propertyPath: tile
+      value: 
+      objectReference: {fileID: 4515319181231461694, guid: 05fcf316952316b48bac6ff4c1275691,
+        type: 3}
+    - target: {fileID: 2444126424307600224, guid: 8f5317eaeab00144c991a8db55d4c864,
+        type: 3}
+      propertyPath: flower
+      value: 
+      objectReference: {fileID: 11400000, guid: ed607769b035b2149af73da6472f3ef0,
+        type: 2}
     - target: {fileID: 2444126424307600225, guid: 8f5317eaeab00144c991a8db55d4c864,
         type: 3}
       propertyPath: m_LocalPosition.x

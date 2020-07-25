@@ -34,7 +34,7 @@ public class LevelManager : MonoBehaviour
     {
         screenInfo = FindObjectOfType<ScreenInfo>();
         worldGrid = FindObjectOfType<Grid>();
-        grids = worldGrid.GetComponentsInChildren<UnityEngine.Tilemaps.Tilemap>();
+        grids = worldGrid.GetComponentsInChildren<Tilemap>();
 
         StartCoroutine(GetLevel());
     }
@@ -55,12 +55,28 @@ public class LevelManager : MonoBehaviour
         Level level = JsonUtility.FromJson<Level>(json);
 
 
-        UnityEngine.Tilemaps.Tilemap currentTileMap;
+        Tilemap currentTileMap;
         for (int i = 0; i < level.layers.Length; i++)
         {
             LevelLayer levelLayer = level.layers[i];
-            currentTileMap = grids[i];
+            currentTileMap = grids[i+1];
+
+            currentTileMap.tag = levelLayer.walkable.GetValueOrDefault(true) 
+                ? "Walkable" : "Obstacle";
             
+            foreach (TextureToCell textureToCell in levelLayer.cells)
+            {
+                switch(textureToCell.texture)
+                {
+                    case "flower":
+                        foreach (CellInfo cellInfo in textureToCell.cells)
+                        {
+                            currentTileMap.SetTile(cellInfo.GetVector3Int(), flower);
+                        }
+                        break;
+                }
+            }
+            currentTileMap.RefreshAllTiles();
         }
     }
 
