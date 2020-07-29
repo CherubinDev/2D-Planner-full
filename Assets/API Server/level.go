@@ -7,8 +7,7 @@ type Level struct {
 }
 
 type LevelLayer struct {
-	Order uint8 `json:"order"`
-	//Cells map[string][]CellInfo `json:"cells"`
+	Order    uint8           `json:"order"`
 	Cells    []TextureToCell `json:"cells"`
 	Walkable *bool           `json:"walkable"`
 }

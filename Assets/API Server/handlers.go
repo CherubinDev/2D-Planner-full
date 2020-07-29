@@ -67,8 +67,8 @@ func SetPlayerLocationHandler(w http.ResponseWriter, r *http.Request) {
 func GetLevelHandler(w http.ResponseWriter, r *http.Request) {
 	nonWalkable := false
 	level := Level{
-		BaseX: 74,
-		BaseY: 46,
+		BaseX: 37,
+		BaseY: 23,
 		Layers: []LevelLayer{
 			{
 				Order: 1,

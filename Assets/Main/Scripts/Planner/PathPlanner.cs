@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using Planner;
+using UnityEngine.Tilemaps;
 
 [RequireComponent(typeof(BaseMovement))]
 public class PathPlanner : MonoBehaviour
@@ -14,9 +15,9 @@ public class PathPlanner : MonoBehaviour
     private Vector3 spriteCompensation;
 
     private Grid worldGrid;
-    private UnityEngine.Tilemaps.Tilemap[] grids;
-    private UnityEngine.Tilemaps.Tilemap groundGrid;
-    private UnityEngine.Tilemaps.Tilemap obstacleGrid;
+    private Tilemap[] grids;
+    private Tilemap groundGrid;
+    private List<Tilemap> obstacleGrids = new List<Tilemap>();
 
     private Node[,] nodes;
     private Vector3Int nodeLocationOffset;
@@ -49,16 +50,26 @@ public class PathPlanner : MonoBehaviour
 
     void Start()
     {
+        Debug.Log("Path Planner Start!");
+        Debug.Log("nodes: " + (nodes == null ? -1 : nodes.Length));
         player = transform;
         baseMovement = player.GetComponent<BaseMovement>();
         
         worldGrid = FindObjectOfType<Grid>();
         spriteCompensation = worldGrid.cellSize / 2.0f;
 
-        grids = worldGrid.GetComponentsInChildren<UnityEngine.Tilemaps.Tilemap>();
+        grids = worldGrid.GetComponentsInChildren<Tilemap>();
         groundGrid = grids[0];
-        // TODO: Iterate through grids and find any that are tagged as obstacles
-        obstacleGrid = grids[1];
+
+        foreach (Tilemap tm in grids)
+        {
+            if (tm.tag.Equals("Obstacle"))
+            {
+                obstacleGrids.Add(tm);
+            }
+        }
+
+        Debug.Log("Obstacle Grids found: " + obstacleGrids.Count);
 
         initializePlanningSpace();
         initializePlanners();
@@ -118,17 +129,21 @@ public class PathPlanner : MonoBehaviour
 
     private void initializePlanningSpace()
     {
+        Debug.Log("initializePlanningSpace!");
         nodeLocationOffset = groundGrid.cellBounds.max;
+        Debug.Log(String.Format("Ground Grid: {0}, {1}", groundGrid.cellBounds.size.x, groundGrid.cellBounds.size.y));
         nodes = new Node[groundGrid.cellBounds.size.x, groundGrid.cellBounds.size.y];
+        Debug.Log("Nodes: X=" + nodes.GetLength(0) + ", Y=" + nodes.GetLength(1));
 
         for (int x = 0; x < nodes.GetLength(0); x++) {
             for (int y = 0; y < nodes.GetLength(1); y++)
             {
+                //Debug.Log(String.Format("Setting up Nodes X={0}, Y={1}", x, y));
                 Vector3Int gridLocation = new Vector3Int(x, y, 1) - nodeLocationOffset;
                 Node newNode = new Node(gridLocation);
                 newNode.setParentNode(null);
                 newNode.setCost(float.MaxValue);
-                newNode.setObstacle(obstacleGrid.CompareTag("Obstacle") && obstacleGrid.HasTile(gridLocation));
+                newNode.setObstacle(isObstacleTile(gridLocation));
                 nodes[x, y] = newNode;
             }
         }
@@ -136,12 +151,32 @@ public class PathPlanner : MonoBehaviour
         {
             for (int y = 0; y < nodes.GetLength(1); y++)
             {
+                //Debug.Log(String.Format("Setting up Neighbors X={0}, Y={1}", x, y));
                 Node node = nodes[x, y];
                 List<Node> neighborNodes = getNeighborNodes(node, ref nodes);
                 node.addNeighborNodes(neighborNodes);
                 nodes[x, y] = node;
             }
         }
+        Debug.Log("initializePlanningSpace done!");
+    }
+
+    private bool isObstacleTile(Vector3Int location)
+    {
+        foreach(Tilemap tm in obstacleGrids)
+        {
+            TileBase tile = tm.GetTile(location);
+            if (location.x == 3 && location.y == 1)
+            {
+                Debug.Log("Tile: " + (tile == null ? "null" : tile.ToString()));
+                Debug.Log("HasTile: " + tm.HasTile(location));
+            }
+            if (tm.HasTile(location))
+            {
+                return true;
+            }
+        }
+        return false;
     }
 
     private List<Node> getNeighborNodes(Node newNode, ref Node[,] existingNodes)

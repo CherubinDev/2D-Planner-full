@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -9,7 +10,7 @@ public class LevelManager : MonoBehaviour
 {
     private const int PIXELS_PER_CELL = 32;
 
-    //public GameObject tile;
+    public Tile baseTile;
     public Tile flower;
 
     private ScreenInfo screenInfo;
@@ -18,9 +19,7 @@ public class LevelManager : MonoBehaviour
     private List<float> worldSpaceY = new List<float>();
 
     private Grid worldGrid;
-    private UnityEngine.Tilemaps.Tilemap[] grids;
-    //private UnityEngine.Tilemaps.Tilemap groundGrid;
-    //private UnityEngine.Tilemaps.Tilemap obstacleGrid;
+    private Tilemap[] grids;
 
     internal class Cell
     {
@@ -52,8 +51,18 @@ public class LevelManager : MonoBehaviour
         string json = request.downloadHandler.text;
         Debug.Log(json);
 
-        Level level = JsonUtility.FromJson<Level>(json);
+        Level level = JsonConvert.DeserializeObject<Level>(json);
 
+        Tilemap baseTileMap = grids[0];
+        int xDist = level.base_x / 2;
+        int yDist = level.base_y / 2;
+        for (int x = -xDist; x < xDist; x++)
+        {
+            for (int y = -yDist; y < yDist; y++)
+            {
+                baseTileMap.SetTile(new Vector3Int(x, y, 1), baseTile);
+            }
+        }
 
         Tilemap currentTileMap;
         for (int i = 0; i < level.layers.Length; i++)
@@ -83,7 +92,6 @@ public class LevelManager : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-
         drawDebugLines();
     }
 
