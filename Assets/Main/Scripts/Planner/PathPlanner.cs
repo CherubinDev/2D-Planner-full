@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -11,13 +12,9 @@ public class PathPlanner : MonoBehaviour
     public bool drawPotentialPath = false;
     private Transform player;
     private BaseMovement baseMovement;
+    private LevelManager levelManager;
 
     private Vector3 spriteCompensation;
-
-    private Grid worldGrid;
-    private Tilemap[] grids;
-    private Tilemap groundGrid;
-    private List<Tilemap> obstacleGrids = new List<Tilemap>();
 
     private Node[,] nodes;
     private Vector3Int nodeLocationOffset;
@@ -50,26 +47,11 @@ public class PathPlanner : MonoBehaviour
 
     void Start()
     {
-        Debug.Log("Path Planner Start!");
-        Debug.Log("nodes: " + (nodes == null ? -1 : nodes.Length));
         player = transform;
         baseMovement = player.GetComponent<BaseMovement>();
-        
-        worldGrid = FindObjectOfType<Grid>();
-        spriteCompensation = worldGrid.cellSize / 2.0f;
+        levelManager = FindObjectOfType<LevelManager>();
 
-        grids = worldGrid.GetComponentsInChildren<Tilemap>();
-        groundGrid = grids[0];
-
-        foreach (Tilemap tm in grids)
-        {
-            if (tm.tag.Equals("Obstacle"))
-            {
-                obstacleGrids.Add(tm);
-            }
-        }
-
-        Debug.Log("Obstacle Grids found: " + obstacleGrids.Count);
+        spriteCompensation = levelManager.getWorldGrid().cellSize / 2.0f;
 
         initializePlanningSpace();
         initializePlanners();
@@ -79,6 +61,7 @@ public class PathPlanner : MonoBehaviour
 
     public void planPath(Vector3Int worldCellDestination, bool appendToPlan)
     {
+        initializePlanningSpace();
         // Determine source and destination nodes
         Node src = getPlayerLocationNode();
         Node dst = getLocationNode(worldCellDestination);
@@ -129,16 +112,15 @@ public class PathPlanner : MonoBehaviour
 
     private void initializePlanningSpace()
     {
-        Debug.Log("initializePlanningSpace!");
+        var start = Time.realtimeSinceStartup;
+        var groundGrid = levelManager.getGroundGrid();
         nodeLocationOffset = groundGrid.cellBounds.max;
-        Debug.Log(String.Format("Ground Grid: {0}, {1}", groundGrid.cellBounds.size.x, groundGrid.cellBounds.size.y));
+        nodeLocationOffset.z = 0;
         nodes = new Node[groundGrid.cellBounds.size.x, groundGrid.cellBounds.size.y];
-        Debug.Log("Nodes: X=" + nodes.GetLength(0) + ", Y=" + nodes.GetLength(1));
 
         for (int x = 0; x < nodes.GetLength(0); x++) {
             for (int y = 0; y < nodes.GetLength(1); y++)
             {
-                //Debug.Log(String.Format("Setting up Nodes X={0}, Y={1}", x, y));
                 Vector3Int gridLocation = new Vector3Int(x, y, 1) - nodeLocationOffset;
                 Node newNode = new Node(gridLocation);
                 newNode.setParentNode(null);
@@ -151,38 +133,22 @@ public class PathPlanner : MonoBehaviour
         {
             for (int y = 0; y < nodes.GetLength(1); y++)
             {
-                //Debug.Log(String.Format("Setting up Neighbors X={0}, Y={1}", x, y));
                 Node node = nodes[x, y];
                 List<Node> neighborNodes = getNeighborNodes(node, ref nodes);
                 node.addNeighborNodes(neighborNodes);
                 nodes[x, y] = node;
             }
         }
-        Debug.Log("initializePlanningSpace done!");
+        Debug.Log(String.Format("initializePlanningSpace done in: {0} seconds", (Time.realtimeSinceStartup - start)));
     }
 
     private bool isObstacleTile(Vector3Int location)
     {
-        foreach(Tilemap tm in obstacleGrids)
-        {
-            TileBase tile = tm.GetTile(location);
-            if (location.x == 3 && location.y == 1)
-            {
-                Debug.Log("Tile: " + (tile == null ? "null" : tile.ToString()));
-                Debug.Log("HasTile: " + tm.HasTile(location));
-            }
-            if (tm.HasTile(location))
-            {
-                return true;
-            }
-        }
-        return false;
+        return levelManager.getObstacleGrids().Any(tm => tm.HasTile(location));
     }
 
     private List<Node> getNeighborNodes(Node newNode, ref Node[,] existingNodes)
     {
-        int maxX = nodes.GetLength(0);
-        int maxY = nodes.GetLength(1);
         Vector3Int nodeLoc = getLocalGridFromWorldGrid(newNode.GridLocation);
         List<Node> neighbors = new List<Node>();
         Node left = LookupNode(nodeLoc + Vector3Int.left, ref existingNodes);
@@ -302,7 +268,7 @@ public class PathPlanner : MonoBehaviour
                     }
                     Debug.DrawLine(
                         nodeLocationToWorldCenterLocation(start.GridLocation),
-                        nodeLocationToWorldCenterLocation(loc.GridLocation), 
+                        nodeLocationToWorldCenterLocation(loc.GridLocation),
                         color
                     );
                 }
@@ -333,7 +299,7 @@ public class PathPlanner : MonoBehaviour
 
     private Vector3 nodeLocationToWorldCenterLocation(Vector3Int worldGridLocation)
     {
-        return worldGrid.CellToLocal(worldGridLocation) + spriteCompensation;
+        return levelManager.getWorldGrid().CellToLocal(worldGridLocation) + spriteCompensation;
     }
 
     private void executePlan()
@@ -351,6 +317,10 @@ public class PathPlanner : MonoBehaviour
     private Node destination;
     private void detectDestination()
     {
+        if (nodes == null)
+        {
+            return;
+        }
         // Check to see if we need to find a planned path
         if (!drawPotentialPath)
         {
@@ -361,7 +331,7 @@ public class PathPlanner : MonoBehaviour
         mousePoint.z = 0.5f;
         Vector3 mousePointWorld = Camera.main.ScreenToWorldPoint(mousePoint);
         // Calculate mouse position in the world grid
-        Vector3Int worldCellLocation = worldGrid.WorldToCell(mousePointWorld);
+        Vector3Int worldCellLocation = levelManager.getWorldGrid().WorldToCell(mousePointWorld);
 
         if (worldCellLocation != currentMouseCell)
         {
@@ -380,7 +350,7 @@ public class PathPlanner : MonoBehaviour
     private Node getPlayerLocationNode()
     {
         // Calculate current player position in the world grid
-        Vector3Int playerWorldPos = worldGrid.WorldToCell(player.localPosition);
+        Vector3Int playerWorldPos = levelManager.getWorldGrid().WorldToCell(player.localPosition);
         // Convert to local position for look up in the array
         Vector3Int playerLocalPos = getLocalGridFromWorldGrid(playerWorldPos);
         return nodes[playerLocalPos.x, playerLocalPos.y];

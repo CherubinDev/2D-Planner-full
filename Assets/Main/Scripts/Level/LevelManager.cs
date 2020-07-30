@@ -20,6 +20,8 @@ public class LevelManager : MonoBehaviour
 
     private Grid worldGrid;
     private Tilemap[] grids;
+    private Tilemap groundGrid;
+    private List<Tilemap> obstacleGrids = new List<Tilemap>();
 
     internal class Cell
     {
@@ -28,14 +30,41 @@ public class LevelManager : MonoBehaviour
         internal float yLoc;
     }
 
-    // Start is called before the first frame update
-    void Start()
+    void Awake()
     {
         screenInfo = FindObjectOfType<ScreenInfo>();
         worldGrid = FindObjectOfType<Grid>();
         grids = worldGrid.GetComponentsInChildren<Tilemap>();
+        groundGrid = grids[0];
+    }
+
+    // Start is called before the first frame update
+    void Start()
+    {
+        foreach (Tilemap tm in grids)
+        {
+            if (tm.tag.Equals("Obstacle"))
+            {
+                obstacleGrids.Add(tm);
+            }
+        }
 
         StartCoroutine(GetLevel());
+    }
+
+    internal Grid getWorldGrid()
+    {
+        return this.worldGrid;
+    }
+
+    internal List<Tilemap> getObstacleGrids()
+    {
+        return this.obstacleGrids;
+    }
+
+    internal Tilemap getGroundGrid()
+    {
+        return this.groundGrid;
     }
 
     private IEnumerator GetLevel()
@@ -64,28 +93,30 @@ public class LevelManager : MonoBehaviour
             }
         }
 
-        Tilemap currentTileMap;
         for (int i = 0; i < level.layers.Length; i++)
         {
             LevelLayer levelLayer = level.layers[i];
-            currentTileMap = grids[i+1];
 
-            currentTileMap.tag = levelLayer.walkable.GetValueOrDefault(true) 
+            grids[i + 1].tag = levelLayer.walkable.GetValueOrDefault(true) 
                 ? "Walkable" : "Obstacle";
             
             foreach (TextureToCell textureToCell in levelLayer.cells)
             {
+                TileBase tile = baseTile;
                 switch(textureToCell.texture)
                 {
                     case "flower":
-                        foreach (CellInfo cellInfo in textureToCell.cells)
-                        {
-                            currentTileMap.SetTile(cellInfo.GetVector3Int(), flower);
-                        }
+                        tile = flower;
                         break;
                 }
+                foreach (CellInfo cellInfo in textureToCell.cells)
+                {
+                    grids[i + 1].SetTile(cellInfo.GetVector3Int(), tile);
+                    bool hasTile = grids[i + 1].HasTile(cellInfo.GetVector3Int());
+                    //Debug.Log(String.Format("HasTile: Loc={0}, val={1}", cellInfo.GetVector3Int(), hasTile));
+                }
             }
-            currentTileMap.RefreshAllTiles();
+            grids[i + 1].RefreshAllTiles();
         }
     }
 
